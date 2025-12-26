@@ -1,19 +1,23 @@
 
+import 'tab_group.dart';
+
 class Workspace {
   final String id;
   String name;
   String icon;
   int color;
   List<TabModel> tabs;
-  
+  List<TabGroup> tabGroups;
+
   Workspace({
     required this.id,
     required this.name,
     required this.icon,
     required this.color,
     required this.tabs,
+    this.tabGroups = const [],
   });
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -21,9 +25,10 @@ class Workspace {
       'icon': icon,
       'color': color,
       'tabs': tabs.map((t) => t.toJson()).toList(),
+      'tabGroups': tabGroups.map((g) => g.toJson()).toList(),
     };
   }
-  
+
   factory Workspace.fromJson(Map<String, dynamic> json) {
     return Workspace(
       id: json['id'] as String,
@@ -33,6 +38,9 @@ class Workspace {
       tabs: (json['tabs'] as List)
           .map((t) => TabModel.fromJson(Map<String, dynamic>.from(t)))
           .toList(),
+      tabGroups: (json['tabGroups'] as List?)
+          ?.map((g) => TabGroup.fromJson(Map<String, dynamic>.from(g)))
+          .toList() ?? [],
     );
   }
 }

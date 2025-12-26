@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/services.dart';
 
 class SettingsProvider with ChangeNotifier {
   final Box _settingsBox = Hive.box('settings');
+  static const MethodChannel _platform = MethodChannel('com.flow.browser/vpn_proxy');
   
   bool _proxyEnabled = false;
   bool _vpnEnabled = false;
@@ -43,15 +45,25 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
   
-  void toggleProxy() {
+  void toggleProxy() async {
     _proxyEnabled = !_proxyEnabled;
     _settingsBox.put('proxyEnabled', _proxyEnabled);
+    try {
+      await _platform.invokeMethod('toggleProxy', {'enabled': _proxyEnabled});
+    } catch (e) {
+      // Handle error
+    }
     notifyListeners();
   }
   
-  void toggleVPN() {
+  void toggleVPN() async {
     _vpnEnabled = !_vpnEnabled;
     _settingsBox.put('vpnEnabled', _vpnEnabled);
+    try {
+      await _platform.invokeMethod('toggleVPN', {'enabled': _vpnEnabled, 'provider': _vpnProvider});
+    } catch (e) {
+      // Handle error
+    }
     notifyListeners();
   }
   

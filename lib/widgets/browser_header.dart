@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/auth_provider.dart';
@@ -14,6 +15,7 @@ class BrowserHeader extends StatefulWidget {
   final VoidCallback onSettingsTap;
   final VoidCallback onAuthTap;
   final bool isMobile;
+  final InAppWebViewController? webViewController;
 
   const BrowserHeader({
     super.key,
@@ -24,6 +26,7 @@ class BrowserHeader extends StatefulWidget {
     required this.onSettingsTap,
     required this.onAuthTap,
     required this.isMobile,
+    this.webViewController,
   });
 
   @override
@@ -33,6 +36,8 @@ class BrowserHeader extends StatefulWidget {
 class _BrowserHeaderState extends State<BrowserHeader> {
   final TextEditingController _urlController = TextEditingController();
   bool _showMoreOptions = false;
+  bool _isLoadingUrl = false;
+  String _lastSetUrl = '';
 
   @override
   void dispose() {
@@ -41,12 +46,27 @@ class _BrowserHeaderState extends State<BrowserHeader> {
   }
 
   @override
+  void didUpdateWidget(covariant BrowserHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only update if the URL changed externally and text field is not focused
+    final newUrl = context.read<BrowserProvider>().urlInput;
+    if (_lastSetUrl != newUrl && !_urlController.selection.isValid) {
+      _urlController.text = newUrl;
+      _lastSetUrl = newUrl;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final browserProvider = context.watch<BrowserProvider>();
     final settingsProvider = context.watch<SettingsProvider>();
     final authProvider = context.watch<AuthProvider>();
     
-    _urlController.text = browserProvider.urlInput;
+    // Only set initial URL if controller is empty or needs updating
+    if (_urlController.text.isEmpty && browserProvider.urlInput.isNotEmpty) {
+      _urlController.text = browserProvider.urlInput;
+      _lastSetUrl = browserProvider.urlInput;
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -54,7 +74,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
         vertical: widget.isMobile ? 8 : 12,
       ),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
+        color: AppConstants.surfaceColor.withOpacity(0.6),
         border: Border(
           bottom: BorderSide(
             color: AppConstants.primaryColor.withOpacity(0.3),
@@ -149,6 +169,26 @@ class _BrowserHeaderState extends State<BrowserHeader> {
     );
   }
 
+  Widget _buildBookmarksButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade800.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Tooltip(
+        message: 'Bookmarks',
+        child: IconButton(
+          icon: const Icon(Icons.bookmarks),
+          color: AppConstants.primaryColor,
+          iconSize: 20,
+          onPressed: widget.onBookmarkTap,
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        ),
+      ),
+    );
+  }
+
   Widget _buildWorkspaceButton(BrowserProvider provider) {
     final workspace = provider.currentWorkspace;
     final icon = _getWorkspaceIcon(workspace.icon);
@@ -187,19 +227,62 @@ class _BrowserHeaderState extends State<BrowserHeader> {
       children: [
         _buildNavButton(
           Icons.arrow_back,
-          () => provider.goBack(),
-          true, // Always enabled
+          () async {
+            if (widget.webViewController != null) {
+              if (await widget.webViewController!.canGoBack()) {
+                await widget.webViewController!.goBack();
+                // Force URL update after navigation
+                Future.delayed(const Duration(milliseconds: 100), () async {
+                  final currentUrl = await widget.webViewController!.getUrl();
+                  if (currentUrl != null && mounted) {
+                    provider.updateCurrentTab(url: currentUrl.toString());
+                  }
+                });
+              }
+            } else {
+              provider.goBack();
+            }
+          },
+          true,
         ),
         const SizedBox(width: 4),
         _buildNavButton(
           Icons.arrow_forward,
-          () => provider.goForward(),
-          true, // Always enabled
+          () async {
+            if (widget.webViewController != null) {
+              if (await widget.webViewController!.canGoForward()) {
+                await widget.webViewController!.goForward();
+                // Force URL update after navigation
+                Future.delayed(const Duration(milliseconds: 100), () async {
+                  final currentUrl = await widget.webViewController!.getUrl();
+                  if (currentUrl != null && mounted) {
+                    provider.updateCurrentTab(url: currentUrl.toString());
+                  }
+                });
+              }
+            } else {
+              provider.goForward();
+            }
+          },
+          true,
         ),
         const SizedBox(width: 4),
         _buildNavButton(
           Icons.refresh,
-          () => provider.reload(),
+          () async {
+            if (widget.webViewController != null) {
+              await widget.webViewController!.reload();
+              // Force URL update after reload
+              Future.delayed(const Duration(milliseconds: 100), () async {
+                final currentUrl = await widget.webViewController!.getUrl();
+                if (currentUrl != null && mounted) {
+                  provider.updateCurrentTab(url: currentUrl.toString());
+                }
+              });
+            } else {
+              provider.reload();
+            }
+          },
           true,
         ),
         const SizedBox(width: 4),
@@ -208,6 +291,8 @@ class _BrowserHeaderState extends State<BrowserHeader> {
           () => provider.goHome(),
           true,
         ),
+        const SizedBox(width: 4),
+        _buildBookmarksButton(),
       ],
     );
   }
@@ -215,7 +300,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
   Widget _buildNavButton(IconData icon, VoidCallback onPressed, bool enabled) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade800.withOpacity(0.5),
+        color: AppConstants.surfaceColor.withOpacity(0.35),
         borderRadius: BorderRadius.circular(8),
       ),
       child: IconButton(
@@ -260,11 +345,37 @@ class _BrowserHeaderState extends State<BrowserHeader> {
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              onSubmitted: (value) {
-                browserProvider.navigateToUrl(value, settingsProvider.searchEngine);
+              onChanged: (value) {
+                _lastSetUrl = value;
+                browserProvider.setUrlInput(value);
+              },
+              onSubmitted: (value) async {
+                // Show instant loading feedback
+                setState(() => _isLoadingUrl = true);
+                try {
+                  browserProvider.navigateToUrl(value, settingsProvider.searchEngine);
+                } finally {
+                  // Reset loading state after a short delay to show the transition
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    if (mounted) setState(() => _isLoadingUrl = false);
+                  });
+                }
               },
             ),
           ),
+          // Loading indicator
+          if (_isLoadingUrl)
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+                ),
+              ),
+            ),
           if (settingsProvider.vpnEnabled || settingsProvider.proxyEnabled)
             Padding(
               padding: const EdgeInsets.only(right: 12),
@@ -294,12 +405,6 @@ class _BrowserHeaderState extends State<BrowserHeader> {
 
   List<Widget> _buildDesktopActions(BrowserProvider provider) {
     return [
-      _buildActionButton(
-        Icons.star,
-        widget.onBookmarkTap,
-        provider.isBookmarked(provider.currentTab.url),
-      ),
-      const SizedBox(width: 8),
       Container(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
@@ -344,13 +449,23 @@ class _BrowserHeaderState extends State<BrowserHeader> {
             ? Border.all(color: Colors.green.withOpacity(0.3))
             : null,
       ),
-      child: IconButton(
-        icon: Icon(icon),
-        color: isActive ? Colors.green : AppConstants.primaryColor,
-        iconSize: 20,
-        onPressed: onPressed,
-        padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      child: Tooltip(
+        message: isActive ? 'Disable proxy' : 'Enable proxy',
+        child: IconButton(
+          icon: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 240),
+            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+            child: Icon(
+              isActive ? icon : icon,
+              key: ValueKey<bool>(isActive),
+            ),
+          ),
+          color: isActive ? Colors.green : AppConstants.primaryColor,
+          iconSize: 20,
+          onPressed: onPressed,
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        ),
       ),
     );
   }

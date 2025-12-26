@@ -58,10 +58,44 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 onSettingsTap: () => setState(() => _showSettings = true),
                 onAuthTap: () => setState(() => _showAuth = true),
                 isMobile: isMobile,
+                webViewController: _webViewController,
+              ),
+              // Email verification banner
+              Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  if (auth.isAuthenticated && !auth.isEmailVerified) {
+                    return Container(
+                      color: Colors.orange.shade800,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Please verify your email to access all features.',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              await auth.resendVerificationEmail();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Verification email sent')),
+                              );
+                            },
+                            child: const Text('Resend', style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
               
               // Tabs bar (desktop/tablet only)
-              if (!isMobile) const BrowserTabs(),
+              (!isMobile) ? BrowserTabs(webViewController: _webViewController) : const SizedBox(),
               
               // Main content area with webview
               Expanded(
@@ -99,7 +133,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
               ),
               
               // Mobile bottom navigation
-              if (isMobile) const MobileBottomNav(),
+              (isMobile) ? const MobileBottomNav() : const SizedBox(),
             ],
           ),
         ),

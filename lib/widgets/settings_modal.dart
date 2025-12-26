@@ -113,6 +113,14 @@ class _SettingsModalState extends State<SettingsModal> {
 
                   // VPN & Proxy
                   _buildSectionHeader('VPN & Proxy'),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Note: Full VPN and proxy implementation requires native platform code (e.g., Android VPNService, iOS NEVPNManager). '
+                      'Currently, toggles are for UI state only. Contact developer for native integration.',
+                      style: TextStyle(color: Colors.orange, fontSize: 12),
+                    ),
+                  ),
                   _buildSwitchTile(
                     'Enable Proxy',
                     'Route traffic through a proxy server',

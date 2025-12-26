@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/browser_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 
 class BookmarksPanel extends StatelessWidget {
@@ -16,6 +17,7 @@ class BookmarksPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<BrowserProvider>();
+    final authProvider = context.watch<AuthProvider>();
 
     Widget content = Container(
       decoration: BoxDecoration(
@@ -42,9 +44,59 @@ class BookmarksPanel extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: AppConstants.primaryColor),
-                  onPressed: onClose,
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.add, color: AppConstants.primaryColor),
+                      tooltip: 'Add current page',
+                      onPressed: () {
+                        if (!authProvider.isAuthenticated) {
+                          // Show auth modal
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Sign In Required'),
+                              content: const Text('You need to be signed in to save bookmarks. Would you like to sign in or create an account?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    // Open auth modal - this would need to be passed as a callback
+                                    // For now, show a snackbar
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Please sign in from the top right menu')),
+                                    );
+                                  },
+                                  child: const Text('Sign In'),
+                                ),
+                              ],
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        final currentUrl = provider.currentTab.url;
+                        if (!provider.isBookmarked(currentUrl)) {
+                          provider.addBookmark();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Bookmark added')),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Already bookmarked')),
+                          );
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppConstants.primaryColor),
+                      onPressed: onClose,
+                    ),
+                  ],
                 ),
               ],
             ),

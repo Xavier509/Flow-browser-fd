@@ -34,13 +34,33 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BrowserProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
-      child: MaterialApp(
-        title: 'Flow Browser',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ),
-        home: const BrowserScreen(),
+      child: Consumer<SettingsProvider>(
+        builder: (context, settings, _) {
+          final light = ThemeData(
+            brightness: Brightness.light,
+            primaryColor: AppConstants.primaryColor,
+            scaffoldBackgroundColor: Colors.white,
+            colorScheme: ColorScheme.fromSwatch().copyWith(secondary: AppConstants.secondaryColor),
+            appBarTheme: const AppBarTheme(backgroundColor: Colors.white, foregroundColor: Colors.black),
+          );
+
+          final dark = ThemeData(
+            brightness: Brightness.dark,
+            primaryColor: AppConstants.primaryColor,
+            scaffoldBackgroundColor: AppConstants.darkBackground,
+            colorScheme: ColorScheme.fromSwatch(brightness: Brightness.dark).copyWith(secondary: AppConstants.secondaryColor),
+            appBarTheme: AppBarTheme(backgroundColor: AppConstants.surfaceColor),
+          );
+
+          return MaterialApp(
+            title: 'Flow Browser',
+            debugShowCheckedModeBanner: false,
+            theme: light,
+            darkTheme: dark,
+            themeMode: settings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            home: const BrowserScreen(),
+          );
+        },
       ),
     );
   }
