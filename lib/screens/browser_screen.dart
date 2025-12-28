@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/auth_provider.dart';
@@ -15,6 +15,9 @@ import '../widgets/workspaces_modal.dart';
 import '../widgets/ai_assistant_panel.dart';
 import '../widgets/auth_modal.dart';
 import '../widgets/mobile_menu.dart';
+import '../widgets/history_panel.dart';
+import '../widgets/notes_panel.dart';
+import '../widgets/todos_panel.dart';
 
 class BrowserScreen extends StatefulWidget {
   const BrowserScreen({super.key});
@@ -30,7 +33,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
   bool _showWorkspaces = false;
   bool _showAIPanel = false;
   bool _showAuth = false;
-  InAppWebViewController? _webViewController;
+  bool _showHistory = false;
+  bool _showNotes = false;
+  bool _showTodos = false;
+  WebViewController? _webViewController;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +55,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
         child: SafeArea(
           child: Column(
             children: [
+              // Tabs bar (desktop/tablet only)
+              (!isMobile) ? BrowserTabs(webViewController: _webViewController) : const SizedBox(),
+
               // Header with URL bar and controls
               BrowserHeader(
                 onMenuTap: isMobile ? () => _scaffoldKey.currentState?.openDrawer() : null,
@@ -57,9 +66,19 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 onWorkspaceTap: () => setState(() => _showWorkspaces = true),
                 onSettingsTap: () => setState(() => _showSettings = true),
                 onAuthTap: () => setState(() => _showAuth = true),
+                onHistoryTap: () => setState(() => _showHistory = !_showHistory),
+                onNotesTap: () => setState(() => _showNotes = !_showNotes),
+                onTodosTap: () => setState(() => _showTodos = !_showTodos),
                 isMobile: isMobile,
                 webViewController: _webViewController,
               ),
+              // History/Notes/Todos panels (desktop/tablet toggles)
+              if (_showHistory && !isMobile)
+                SizedBox(width: 360, child: HistoryPanel()),
+              if (_showNotes && !isMobile)
+                SizedBox(width: 360, child: NotesPanel()),
+              if (_showTodos && !isMobile)
+                SizedBox(width: 360, child: TodosPanel()),
               // Email verification banner
               Consumer<AuthProvider>(
                 builder: (context, auth, _) {
@@ -94,8 +113,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 },
               ),
               
-              // Tabs bar (desktop/tablet only)
-              (!isMobile) ? BrowserTabs(webViewController: _webViewController) : const SizedBox(),
+              // (Removed duplicate tabs bar)
               
               // Main content area with webview
               Expanded(

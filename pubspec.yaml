@@ -16,8 +16,8 @@ dependencies:
   google_fonts: ^6.1.0
   
   # Web View for browser functionality
-  flutter_inappwebview: ^6.0.0
-  #webview_flutter: ^4.4.2
+  #flutter_inappwebview: ^6.0.0
+  webview_flutter: ^4.4.2
   #webview_flutter_android: ^4.10.11
   #webview_flutter_wkwebview: ^3.9.4
   

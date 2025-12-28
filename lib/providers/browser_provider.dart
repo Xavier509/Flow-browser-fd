@@ -271,6 +271,135 @@ class BrowserProvider with ChangeNotifier {
       await Supabase.instance.client.from('sessions').upsert(payload);
     } catch (_) {}
   }
+
+  // --- History / Notes / Todos sync ---
+  Future<void> _upsertHistoryToSupabase(Map<String, dynamic> entry) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      final payload = {
+        'user_id': user.id,
+        'url': entry['url'],
+        'query': entry['query'],
+        'timestamp': entry['timestamp'],
+      };
+      await Supabase.instance.client.from('history').insert(payload);
+    } catch (_) {}
+  }
+
+  Future<void> _upsertNoteToSupabase(Map<String, dynamic> note) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      final payload = {
+        'user_id': user.id,
+        'text': note['text'],
+        'created_at': note['ts'] ?? DateTime.now().toIso8601String(),
+      };
+      await Supabase.instance.client.from('notes').insert(payload);
+    } catch (_) {}
+  }
+
+  Future<void> _upsertTodoToSupabase(Map<String, dynamic> todo) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      final payload = {
+        'user_id': user.id,
+        'text': todo['text'],
+        'done': todo['done'] ?? false,
+        'created_at': todo['ts'] ?? DateTime.now().toIso8601String(),
+      };
+      await Supabase.instance.client.from('todos').insert(payload);
+    } catch (_) {}
+  }
+
+  // Public wrappers to allow UI to trigger remote sync when user is authenticated
+  Future<void> upsertNoteToSupabase(Map<String, dynamic> note) async => _upsertNoteToSupabase(note);
+  Future<void> upsertTodoToSupabase(Map<String, dynamic> todo) async => _upsertTodoToSupabase(todo);
+
+  Future<void> syncHistoryFromSupabase() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      final List data = await Supabase.instance.client.from('history').select().eq('user_id', user.id);
+      final Box historyBox = Hive.box('history');
+      for (final item in data) {
+        try {
+          final Map<String, dynamic> map = Map<String, dynamic>.from(item as Map);
+          // simple dedupe by url+timestamp
+          final exists = historyBox.values.any((v) => v is Map && v['url'] == map['url'] && v['timestamp'] == map['timestamp']);
+          if (!exists) {
+            historyBox.add({'url': map['url'], 'timestamp': map['timestamp'], 'user': user.id, 'query': map['query']});
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  Future<void> syncNotesFromSupabase() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      final List data = await Supabase.instance.client.from('notes').select().eq('user_id', user.id);
+      final Box notesBox = Hive.box('notes');
+      for (final item in data) {
+        try {
+          final Map<String, dynamic> map = Map<String, dynamic>.from(item as Map);
+          final exists = notesBox.values.any((v) => v is Map && v['text'] == map['text'] && v['created_at'] == map['created_at']);
+          if (!exists) {
+            notesBox.add({'text': map['text'], 'ts': map['created_at']});
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  Future<void> syncTodosFromSupabase() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      final List data = await Supabase.instance.client.from('todos').select().eq('user_id', user.id);
+      final Box todosBox = Hive.box('todos');
+      for (final item in data) {
+        try {
+          final Map<String, dynamic> map = Map<String, dynamic>.from(item as Map);
+          final exists = todosBox.values.any((v) => v is Map && v['text'] == map['text'] && v['created_at'] == map['created_at']);
+          if (!exists) {
+            todosBox.add({'text': map['text'], 'done': map['done'] ?? false, 'ts': map['created_at']});
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  /// Simple recommendation engine: returns top queries from local history for current user
+  List<String> getRecommendations({int limit = 5}) {
+    try {
+      final Box historyBox = Hive.box('history');
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      final items = historyBox.values.where((v) => v is Map && (userId == null || v['user'] == userId)).map((v) => Map<String, dynamic>.from(v as Map)).toList();
+      final Map<String, int> counts = {};
+      for (final e in items) {
+        final q = (e['query'] as String?) ?? _extractDomain(e['url'] ?? '');
+        if (q == null) continue;
+        counts[q] = (counts[q] ?? 0) + 1;
+      }
+      final sorted = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+      return sorted.take(limit).map((e) => e.key).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  String _extractDomain(String url) {
+    try {
+      final uri = Uri.parse(url);
+      return uri.host.replaceFirst('www.', '');
+    } catch (_) {
+      return url;
+    }
+  }
   
   // Workspace Management
   void addWorkspace(String name, String icon, int color, String description) {
@@ -400,27 +529,47 @@ class BrowserProvider with ChangeNotifier {
   // Navigation
   void navigateToUrl(String url, [String? searchEngine]) {
     String finalUrl = url.trim();
-    
+
     if (finalUrl.isEmpty) return;
-    
+
     // Check if it's a search query or URL
     final isUrl = RegExp(r'^(https?:\/\/)|(www\.)|(\w+\.\w+)').hasMatch(finalUrl);
-    
+
+    String? searchQuery;
     if (!isUrl) {
       // It's a search query - use the specified search engine or default to Google
       final engine = searchEngine ?? 'Google';
       var searchUrl = AppConstants.searchEngines[engine] ?? AppConstants.searchEngines['Google']!;
       // Support both placeholder style (contains %s) and simple suffix style
       if (searchUrl.contains('%s')) {
+        searchQuery = finalUrl;
         finalUrl = searchUrl.replaceAll('%s', Uri.encodeComponent(finalUrl));
       } else {
         // append encoded query
+        searchQuery = finalUrl;
         finalUrl = '${searchUrl}${Uri.encodeComponent(finalUrl)}';
       }
     } else if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
       finalUrl = 'https://$finalUrl';
     }
-    
+
+    // Persist to history (local Hive box)
+    try {
+      final Box historyBox = Hive.box('history');
+      final entry = {
+        'url': finalUrl,
+        'timestamp': DateTime.now().toIso8601String(),
+        'user': Supabase.instance.client.auth.currentUser?.id,
+        'query': searchQuery,
+      };
+      historyBox.add(entry);
+      // If signed in, sync to Supabase
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId != null) {
+        _upsertHistoryToSupabase(entry);
+      }
+    } catch (_) {}
+
     updateCurrentTab(url: finalUrl);
     _urlInput = finalUrl;
   }

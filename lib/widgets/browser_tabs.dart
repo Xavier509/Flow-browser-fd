@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../providers/browser_provider.dart';
 import '../models/workspace.dart';
 import '../models/tab_group.dart';
 import 'source_viewer_dialog.dart';
 
 class BrowserTabs extends StatefulWidget {
-  final InAppWebViewController? webViewController;
+  final WebViewController? webViewController;
 
   const BrowserTabs({super.key, this.webViewController});
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/auth_provider.dart';
@@ -14,8 +14,11 @@ class BrowserHeader extends StatefulWidget {
   final VoidCallback onWorkspaceTap;
   final VoidCallback onSettingsTap;
   final VoidCallback onAuthTap;
+  final VoidCallback? onHistoryTap;
+  final VoidCallback? onNotesTap;
+  final VoidCallback? onTodosTap;
   final bool isMobile;
-  final InAppWebViewController? webViewController;
+  final WebViewController? webViewController;
 
   const BrowserHeader({
     super.key,
@@ -113,6 +116,21 @@ class _BrowserHeaderState extends State<BrowserHeader> {
           
           // Action buttons
           if (!widget.isMobile) ..._buildDesktopActions(browserProvider),
+          // History / Notes / Todos icons
+          if (!widget.isMobile) ...[
+            IconButton(
+              icon: const Icon(Icons.history, color: AppConstants.primaryColor),
+              onPressed: widget.onHistoryTap,
+            ),
+            IconButton(
+              icon: const Icon(Icons.note_alt, color: AppConstants.primaryColor),
+              onPressed: widget.onNotesTap,
+            ),
+            IconButton(
+              icon: const Icon(Icons.checklist_rtl, color: AppConstants.primaryColor),
+              onPressed: widget.onTodosTap,
+            ),
+          ],
           
           // Mobile more options
           if (widget.isMobile)
@@ -233,7 +251,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
                 await widget.webViewController!.goBack();
                 // Force URL update after navigation
                 Future.delayed(const Duration(milliseconds: 100), () async {
-                  final currentUrl = await widget.webViewController!.getUrl();
+                  final currentUrl = await widget.webViewController!.currentUrl();
                   if (currentUrl != null && mounted) {
                     provider.updateCurrentTab(url: currentUrl.toString());
                   }
@@ -254,7 +272,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
                 await widget.webViewController!.goForward();
                 // Force URL update after navigation
                 Future.delayed(const Duration(milliseconds: 100), () async {
-                  final currentUrl = await widget.webViewController!.getUrl();
+                  final currentUrl = await widget.webViewController!.currentUrl();
                   if (currentUrl != null && mounted) {
                     provider.updateCurrentTab(url: currentUrl.toString());
                   }
@@ -274,7 +292,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
               await widget.webViewController!.reload();
               // Force URL update after reload
               Future.delayed(const Duration(milliseconds: 100), () async {
-                final currentUrl = await widget.webViewController!.getUrl();
+                final currentUrl = await widget.webViewController!.currentUrl();
                 if (currentUrl != null && mounted) {
                   provider.updateCurrentTab(url: currentUrl.toString());
                 }
@@ -354,6 +372,13 @@ class _BrowserHeaderState extends State<BrowserHeader> {
                 setState(() => _isLoadingUrl = true);
                 try {
                   browserProvider.navigateToUrl(value, settingsProvider.searchEngine);
+                  // If we have a controller, load immediately for instant feedback
+                  final cur = browserProvider.currentTab.url;
+                  if (widget.webViewController != null && cur.isNotEmpty && cur != 'about:blank') {
+                    try {
+                      await widget.webViewController!.loadRequest(Uri.parse(cur));
+                    } catch (_) {}
+                  }
                 } finally {
                   // Reset loading state after a short delay to show the transition
                   Future.delayed(const Duration(milliseconds: 500), () {

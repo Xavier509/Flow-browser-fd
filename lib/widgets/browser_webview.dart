@@ -1,13 +1,14 @@
 // widgets/browser_webview.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/constants.dart';
 
 class BrowserWebView extends StatefulWidget {
-  final Function(InAppWebViewController)? onWebViewCreated;
+  final Function(WebViewController)? onWebViewCreated;
 
   const BrowserWebView({super.key, this.onWebViewCreated});
 
@@ -16,12 +17,65 @@ class BrowserWebView extends StatefulWidget {
 }
 
 class _BrowserWebViewState extends State<BrowserWebView> {
-  InAppWebViewController? _controller;
+  WebViewController? _controller;
   double _progress = 0;
   String? _lastLoadedUrl;
   String? _lastTabId;
+  String? _webviewError;
   final Map<String, String> _tabCache = {}; // Cache for tab URLs
   final Map<String, String> _titleCache = {}; // Cache for tab titles
+
+  Future<void> _tryInitController() async {
+    try {
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageStarted: (String url) {
+              setState(() {
+                _progress = 0;
+                _webviewError = null;
+              });
+              final provider = context.read<BrowserProvider>();
+              provider.currentTab.isLoading = true;
+              provider.updateCurrentTab(url: url);
+            },
+            onProgress: (int progress) {
+              setState(() => _progress = progress / 100);
+            },
+            onPageFinished: (String url) {
+              setState(() => _progress = 1.0);
+              final provider = context.read<BrowserProvider>();
+              provider.currentTab.isLoading = false;
+              // Cache the URL
+              _tabCache[provider.currentTab.id] = url;
+            },
+            onWebResourceError: (WebResourceError error) {
+              setState(() {
+                _webviewError = error.description ?? error.toString();
+              });
+              debugPrint('WebView error: ${error.description}');
+            },
+            onNavigationRequest: (request) => NavigationDecision.navigate,
+          ),
+        );
+      // notify parent that controller is ready
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onWebViewCreated?.call(_controller!);
+      });
+    } catch (e) {
+      // Platform implementation missing or other initialization failure
+      setState(() {
+        _webviewError = 'WebView platform unavailable: ${e.toString()}\n\nLikely causes: 1) `flutter pub get` has not been run or `pub get` failed (check for invalid packages in `pubspec.yaml`), or 2) Microsoft Edge WebView2 runtime is not installed. Run `flutter pub get` locally, correct any invalid dependencies in `pubspec.yaml`, and install WebView2 (see app Help -> WebView2).';
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tryInitController();
+  }
 
   @override
   void didUpdateWidget(BrowserWebView oldWidget) {
@@ -29,22 +83,12 @@ class _BrowserWebViewState extends State<BrowserWebView> {
     final browserProvider = context.read<BrowserProvider>();
     final currentTab = browserProvider.currentTab;
     
-    // Load new URL if:
-    // 1. Tab changed (different tab ID)
-    // 2. URL changed for current tab
-    // 3. URL is not about:blank
     final tabChanged = _lastTabId != currentTab.id;
     final urlChanged = currentTab.url != _lastLoadedUrl;
     
     if (_controller != null && (tabChanged || urlChanged) && currentTab.url != 'about:blank') {
-      // Use cache if available for instant switching
-      if (tabChanged && _tabCache.containsKey(currentTab.id)) {
-        _controller!.loadUrl(urlRequest: URLRequest(url: WebUri(_tabCache[currentTab.id]!)));
-        _lastLoadedUrl = _tabCache[currentTab.id];
-      } else {
-        _controller!.loadUrl(urlRequest: URLRequest(url: WebUri(currentTab.url)));
-        _lastLoadedUrl = currentTab.url;
-      }
+      _controller!.loadRequest(Uri.parse(currentTab.url));
+      _lastLoadedUrl = currentTab.url;
       _lastTabId = currentTab.id;
       
       // Update title from cache if available
@@ -67,89 +111,74 @@ class _BrowserWebViewState extends State<BrowserWebView> {
       return _buildStartPage(browserProvider, settingsProvider);
     }
 
+    // Initialize webview with current URL on first load
+    if (_lastLoadedUrl == null && _controller != null) {
+      _controller!.loadRequest(Uri.parse(currentTab.url));
+      _lastLoadedUrl = currentTab.url;
+    }
+
+    // If the webview reported an error, show a friendly error UI with retry
+    if (_webviewError != null) {
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.red.shade900,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 48),
+              const SizedBox(height: 12),
+              Text(
+                'WebView Error',
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: 400,
+                child: Text(
+                  _webviewError!,
+                  style: const TextStyle(color: Colors.white70),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      setState(() => _webviewError = null);
+                      await _tryInitController();
+                      if (_controller != null && _lastLoadedUrl != null) {
+                        _controller!.loadRequest(Uri.parse(_lastLoadedUrl!));
+                      }
+                    },
+                    child: const Text('Retry'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      const url = 'https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section';
+                      try {
+                        await launchUrlString(url);
+                      } catch (_) {}
+                    },
+                    child: const Text('Install WebView2'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Stack(
       children: [
-        InAppWebView(
-          initialUrlRequest: URLRequest(url: WebUri(currentTab.url)),
-          initialSettings: InAppWebViewSettings(
-            javaScriptEnabled: true,
-            javaScriptCanOpenWindowsAutomatically: false,
-            mediaPlaybackRequiresUserGesture: false,
-            allowsInlineMediaPlayback: true,
-            useOnLoadResource: settingsProvider.blockTrackers,
-            useShouldOverrideUrlLoading: true,
-            // Performance optimizations
-            cacheEnabled: true,
-            domStorageEnabled: true,
-            databaseEnabled: true,
-            hardwareAcceleration: true,
-            useWideViewPort: true,
-            loadWithOverviewMode: true,
-            supportZoom: false,
-            builtInZoomControls: false,
-            displayZoomControls: false,
-            useOnRenderProcessGone: true,
-            safeBrowsingEnabled: true,
-            disableDefaultErrorPage: true,
-            verticalScrollBarEnabled: false,
-            horizontalScrollBarEnabled: false,
-            overScrollMode: OverScrollMode.IF_CONTENT_SCROLLS,
-            scrollBarStyle: ScrollBarStyle.SCROLLBARS_OUTSIDE_OVERLAY,
-            scrollBarFadeDuration: 0,
-            // Network optimizations
-            resourceCustomSchemes: [],
-          ),
-          onWebViewCreated: (controller) {
-            _controller = controller;
-            _lastLoadedUrl = context.read<BrowserProvider>().currentTab.url;
-            widget.onWebViewCreated?.call(controller);
-          },
-          onLoadStart: (controller, url) {
-            setState(() => _progress = 0);
-            currentTab.isLoading = true;
-            if (url != null) {
-              browserProvider.updateCurrentTab(url: url.toString());
-            }
-          },
-          onProgressChanged: (controller, progress) {
-            setState(() => _progress = progress / 100);
-          },
-          onLoadStop: (controller, url) async {
-            currentTab.isLoading = false;
-            if (url != null) {
-              final title = await controller.getTitle() ?? url.toString();
-              browserProvider.updateCurrentTab(
-                url: url.toString(),
-                title: title,
-              );
-              // Cache the URL and title for instant switching
-              _tabCache[currentTab.id] = url.toString();
-              _titleCache[currentTab.id] = title;
-            }
-            setState(() => _progress = 1.0);
-          },
-          onTitleChanged: (controller, title) {
-            if (title != null) {
-              browserProvider.updateCurrentTab(title: title);
-              // Cache the title for instant switching
-              _titleCache[currentTab.id] = title;
-            }
-          },
-          shouldOverrideUrlLoading: (controller, navigationAction) async {
-            final url = navigationAction.request.url;
-            if (url != null) {
-              final urlString = url.toString();
-              browserProvider.updateCurrentTab(url: urlString);
-              
-              if (settingsProvider.blockTrackers) {
-                if (AppConstants.trackerBlocklist.any((domain) => 
-                    urlString.contains(domain))) {
-                  return NavigationActionPolicy.CANCEL;
-                }
-              }
-            }
-            return NavigationActionPolicy.ALLOW;
-          },
+        WebViewWidget(
+          controller: _controller ?? WebViewController(),
         ),
         if (_progress < 1.0)
           LinearProgressIndicator(
@@ -230,30 +259,52 @@ class _BrowserWebViewState extends State<BrowserWebView> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                alignment: WrapAlignment.center,
-                children: [
-                  if (settings.vpnEnabled)
-                    _buildStatusChip(
-                      Icons.shield,
-                      'VPN Active',
-                      AppConstants.tertiaryColor,
+              // Recommended searches on the start page
+              Builder(builder: (ctx) {
+                final recs = context.read<BrowserProvider>().getRecommendations(limit: 6);
+                return Column(
+                  children: [
+                    if (recs.isNotEmpty) ...[
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(left: 8.0, bottom: 8.0),
+                          child: Text('Recommended for you', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      Wrap(
+                        spacing: 8,
+                        children: recs.map((r) => ActionChip(label: Text(r), onPressed: () => context.read<BrowserProvider>().navigateToUrl(r))).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        if (settings.vpnEnabled)
+                          _buildStatusChip(
+                            Icons.shield,
+                            'VPN Active',
+                            AppConstants.tertiaryColor,
+                          ),
+                        if (settings.proxyEnabled)
+                          _buildStatusChip(
+                            Icons.shield,
+                            'Proxy Active',
+                            Colors.green,
+                          ),
+                        _buildStatusChip(
+                          Icons.lock,
+                          'Security: ${settings.securityLevel.toUpperCase()}',
+                          AppConstants.primaryColor,
+                        ),
+                      ],
                     ),
-                  if (settings.proxyEnabled)
-                    _buildStatusChip(
-                      Icons.shield,
-                      'Proxy Active',
-                      Colors.green,
-                    ),
-                  _buildStatusChip(
-                    Icons.lock,
-                    'Security: ${settings.securityLevel.toUpperCase()}',
-                    AppConstants.primaryColor,
-                  ),
-                ],
-              ),
+                  ],
+                );
+              }),
             ],
           ),
         ),

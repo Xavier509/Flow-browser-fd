@@ -19,12 +19,46 @@ void main() async {
   await Hive.openBox('workspaces');
   await Hive.openBox('bookmarks');
   await Hive.openBox('history');
+  await Hive.openBox('notes');
+  await Hive.openBox('todos');
 
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Defer provider initialization until after widgets are ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final auth = context.read<AuthProvider>();
+        final browser = context.read<BrowserProvider>();
+        auth.initialize();
+        // If already signed in, sync remote data
+        if (auth.isAuthenticated) {
+          browser.syncHistoryFromSupabase();
+          browser.syncNotesFromSupabase();
+          browser.syncTodosFromSupabase();
+        }
+        // Listen for auth changes to trigger sync
+        auth.addListener(() {
+          if (auth.isAuthenticated) {
+            browser.syncHistoryFromSupabase();
+            browser.syncNotesFromSupabase();
+            browser.syncTodosFromSupabase();
+          }
+        });
+      } catch (_) {}
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class AIAssistantPanel extends StatelessWidget {
-  final InAppWebViewController? webViewController;
+  final WebViewController? webViewController;
   final VoidCallback onClose;
   final bool isMobile;
 
