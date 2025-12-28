@@ -112,7 +112,7 @@ class _WorkspacesModalState extends State<WorkspacesModal> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withAlpha((0.3 * 255).round()),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -183,19 +183,19 @@ class _WorkspacesModalState extends State<WorkspacesModal> {
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
                           color: isActive
-                              ? Color(workspace.color).withOpacity(0.2)
-                              : Colors.grey.shade800.withOpacity(0.3),
+                              ? Color(workspace.color).withAlpha((0.2 * 255).round())
+                              : Colors.grey.shade800.withAlpha((0.3 * 255).round()),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isActive
                                 ? Color(workspace.color)
-                                : AppConstants.primaryColor.withOpacity(0.2),
+                                : AppConstants.primaryColor.withAlpha((0.2 * 255).round()),
                             width: isActive ? 2 : 1,
                           ),
                         ),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Color(workspace.color).withOpacity(0.2),
+                            backgroundColor: Color(workspace.color).withAlpha((0.2 * 255).round()),
                             child: Icon(
                               _getIconData(workspace.icon),
                               color: Color(workspace.color),
@@ -211,7 +211,7 @@ class _WorkspacesModalState extends State<WorkspacesModal> {
                           subtitle: Text(
                             '${workspace.tabs.length} tab${workspace.tabs.length != 1 ? 's' : ''}',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withAlpha((0.7 * 255).round()),
                             ),
                           ),
                           trailing: browserProvider.workspaces.length > 1
@@ -262,7 +262,7 @@ class _WorkspacesModalState extends State<WorkspacesModal> {
                         borderSide: BorderSide(color: AppConstants.primaryColor),
                       ),
                       filled: true,
-                      fillColor: Colors.grey.shade800.withOpacity(0.3),
+                      fillColor: Colors.grey.shade800.withAlpha((0.3 * 255).round()),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -287,8 +287,8 @@ class _WorkspacesModalState extends State<WorkspacesModal> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppConstants.primaryColor.withOpacity(0.2)
-                                : Colors.grey.shade800.withOpacity(0.3),
+                                ? AppConstants.primaryColor.withAlpha((0.2 * 255).round())
+                                : Colors.grey.shade800.withAlpha((0.3 * 255).round()),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: isSelected
@@ -335,7 +335,7 @@ class _WorkspacesModalState extends State<WorkspacesModal> {
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
-                                      color: Color(color).withOpacity(0.5),
+                                      color: Color(color).withAlpha((0.5 * 255).round()),
                                       blurRadius: 8,
                                       spreadRadius: 2,
                                     ),

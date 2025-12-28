@@ -78,7 +78,7 @@ class _AuthModalState extends State<AuthModal> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withAlpha((0.3 * 255).round()),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -141,18 +141,18 @@ class _AuthModalState extends State<AuthModal> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppConstants.primaryColor.withOpacity(0.3)),
+                      borderSide: BorderSide(color: AppConstants.primaryColor.withAlpha((0.3 * 255).round())),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppConstants.primaryColor.withOpacity(0.3)),
+                      borderSide: BorderSide(color: AppConstants.primaryColor.withAlpha((0.3 * 255).round())),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: AppConstants.primaryColor),
                     ),
                     filled: true,
-                    fillColor: Colors.grey.shade800.withOpacity(0.3),
+                    fillColor: Colors.grey.shade800.withAlpha((0.3 * 255).round()),
                   ),
                   style: const TextStyle(color: Colors.white),
                 ),
@@ -171,18 +171,18 @@ class _AuthModalState extends State<AuthModal> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppConstants.primaryColor.withOpacity(0.3)),
+                      borderSide: BorderSide(color: AppConstants.primaryColor.withAlpha((0.3 * 255).round())),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppConstants.primaryColor.withOpacity(0.3)),
+                      borderSide: BorderSide(color: AppConstants.primaryColor.withAlpha((0.3 * 255).round())),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: AppConstants.primaryColor),
                     ),
                     filled: true,
-                    fillColor: Colors.grey.shade800.withOpacity(0.3),
+                    fillColor: Colors.grey.shade800.withAlpha((0.3 * 255).round()),
                   ),
                   style: const TextStyle(color: Colors.white),
                 ),
@@ -202,18 +202,18 @@ class _AuthModalState extends State<AuthModal> {
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: AppConstants.primaryColor.withOpacity(0.3)),
+                        borderSide: BorderSide(color: AppConstants.primaryColor.withAlpha((0.3 * 255).round())),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: AppConstants.primaryColor.withOpacity(0.3)),
+                        borderSide: BorderSide(color: AppConstants.primaryColor.withAlpha((0.3 * 255).round())),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: AppConstants.primaryColor),
                       ),
                       filled: true,
-                      fillColor: Colors.grey.shade800.withOpacity(0.3),
+                      fillColor: Colors.grey.shade800.withAlpha((0.3 * 255).round()),
                     ),
                     style: const TextStyle(color: Colors.white),
                   ),
@@ -225,9 +225,10 @@ class _AuthModalState extends State<AuthModal> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withAlpha((0.1 * 255).round()),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      border: Border.all(color: Colors.red.withAlpha((0.3 * 255).round())),
+
                     ),
                     child: Text(
                       _errorMessage!,

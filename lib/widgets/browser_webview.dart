@@ -26,49 +26,58 @@ class _BrowserWebViewState extends State<BrowserWebView> {
   final Map<String, String> _titleCache = {}; // Cache for tab titles
 
   Future<void> _tryInitController() async {
-    try {
-      _controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setNavigationDelegate(
-          NavigationDelegate(
-            onPageStarted: (String url) {
-              setState(() {
-                _progress = 0;
-                _webviewError = null;
-              });
-              final provider = context.read<BrowserProvider>();
-              provider.currentTab.isLoading = true;
-              provider.updateCurrentTab(url: url);
-            },
-            onProgress: (int progress) {
-              setState(() => _progress = progress / 100);
-            },
-            onPageFinished: (String url) {
-              setState(() => _progress = 1.0);
-              final provider = context.read<BrowserProvider>();
-              provider.currentTab.isLoading = false;
-              // Cache the URL
-              _tabCache[provider.currentTab.id] = url;
-            },
-            onWebResourceError: (WebResourceError error) {
-              setState(() {
-                _webviewError = error.description ?? error.toString();
-              });
-              debugPrint('WebView error: ${error.description}');
-            },
-            onNavigationRequest: (request) => NavigationDecision.navigate,
-          ),
-        );
-      // notify parent that controller is ready
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.onWebViewCreated?.call(_controller!);
-      });
-    } catch (e) {
-      // Platform implementation missing or other initialization failure
-      setState(() {
-        _webviewError = 'WebView platform unavailable: ${e.toString()}\n\nLikely causes: 1) `flutter pub get` has not been run or `pub get` failed (check for invalid packages in `pubspec.yaml`), or 2) Microsoft Edge WebView2 runtime is not installed. Run `flutter pub get` locally, correct any invalid dependencies in `pubspec.yaml`, and install WebView2 (see app Help -> WebView2).';
-      });
+    // Try a few times because platform init can be flaky on some Windows setups
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        _controller = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageStarted: (String url) {
+                setState(() {
+                  _progress = 0;
+                  _webviewError = null;
+                });
+                final provider = context.read<BrowserProvider>();
+                provider.currentTab.isLoading = true;
+                provider.updateCurrentTab(url: url);
+              },
+              onProgress: (int progress) {
+                setState(() => _progress = progress / 100);
+              },
+              onPageFinished: (String url) {
+                setState(() => _progress = 1.0);
+                final provider = context.read<BrowserProvider>();
+                provider.currentTab.isLoading = false;
+                // Cache the URL
+                _tabCache[provider.currentTab.id] = url;
+              },
+              onWebResourceError: (WebResourceError error) {
+                setState(() {
+                  _webviewError = error.description ?? error.toString();
+                });
+                debugPrint('WebView error: ${error.description}');
+              },
+              onNavigationRequest: (request) => NavigationDecision.navigate,
+            ),
+          );
+        // notify parent that controller is ready
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.onWebViewCreated?.call(_controller!);
+        });
+        // successful init
+        return;
+      } catch (e) {
+        debugPrint('WebView init attempt ${attempt + 1} failed: $e');
+        await Future.delayed(Duration(milliseconds: 300 * (attempt + 1)));
+        _controller = null;
+      }
     }
+
+    // After retries, surface friendly error with guidance
+    setState(() {
+      _webviewError = 'WebView platform unavailable after multiple attempts. Likely causes: 1) `flutter pub get` failed or an invalid package in `pubspec.yaml`, or 2) the Microsoft Edge WebView2 runtime is not installed on Windows. Try installing WebView2, running `flutter pub get`, or use the "Open externally" option.';
+    });
   }
 
   @override
@@ -119,6 +128,7 @@ class _BrowserWebViewState extends State<BrowserWebView> {
 
     // If the webview reported an error, show a friendly error UI with retry
     if (_webviewError != null) {
+      final showUrl = _lastLoadedUrl ?? (currentTab.url == 'about:blank' ? null : currentTab.url);
       return Center(
         child: Container(
           padding: const EdgeInsets.all(24),
@@ -137,9 +147,9 @@ class _BrowserWebViewState extends State<BrowserWebView> {
               ),
               const SizedBox(height: 8),
               SizedBox(
-                width: 400,
+                width: 480,
                 child: Text(
-                  _webviewError!,
+                  'WebView platform is unavailable. This usually means the platform implementation for webview_flutter is not available or the Microsoft Edge WebView2 runtime is not installed on Windows. You can try installing WebView2, open the URL in your system browser, or retry the in-app WebView.',
                   style: const TextStyle(color: Colors.white70),
                   textAlign: TextAlign.center,
                 ),
@@ -161,12 +171,30 @@ class _BrowserWebViewState extends State<BrowserWebView> {
                   ElevatedButton(
                     onPressed: () async {
                       const url = 'https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section';
-                      try {
-                        await launchUrlString(url);
-                      } catch (_) {}
+                      try { await launchUrlString(url); } catch (_) {}
                     },
                     child: const Text('Install WebView2'),
                   ),
+                  if (showUrl != null) ...[
+                    ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          final provider = context.read<BrowserProvider>();
+                          provider.addTab();
+                          provider.navigateToUrl(showUrl);
+                        } catch (_) {}
+                      },
+                      child: const Text('Open in Flow'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          await launchUrlString(showUrl);
+                        } catch (_) {}
+                      },
+                      child: const Text('Open externally'),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -211,7 +239,7 @@ class _BrowserWebViewState extends State<BrowserWebView> {
                   gradient: AppConstants.primaryGradient,
                   boxShadow: [
                     BoxShadow(
-                      color: AppConstants.primaryColor.withOpacity(0.35),
+                      color: AppConstants.primaryColor.withAlpha((0.35 * 255).round()),
                       blurRadius: 30,
                       spreadRadius: 6,
                     ),
@@ -245,7 +273,7 @@ class _BrowserWebViewState extends State<BrowserWebView> {
               Text(
                 'Workspace: ${provider.currentWorkspace.name}',
                 style: TextStyle(
-                  color: AppConstants.primaryColor.withOpacity(0.75),
+                  color: AppConstants.primaryColor.withAlpha((0.75 * 255).round()),
                   fontSize: 16,
                 ),
               ),
@@ -253,7 +281,7 @@ class _BrowserWebViewState extends State<BrowserWebView> {
               Text(
                 'Enter a URL or search query above to start browsing',
                 style: TextStyle(
-                  color: AppConstants.primaryColor.withOpacity(0.55),
+                  color: AppConstants.primaryColor.withAlpha((0.55 * 255).round()),
                   fontSize: 13,
                 ),
                 textAlign: TextAlign.center,
@@ -316,9 +344,10 @@ class _BrowserWebViewState extends State<BrowserWebView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withAlpha((0.2 * 255).round()),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withAlpha((0.3 * 255).round())),
+
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -327,7 +356,7 @@ class _BrowserWebViewState extends State<BrowserWebView> {
           const SizedBox(width: 8),
           Text(
             label,
-            style: TextStyle(color: color, fontSize: 14),
+            style: TextStyle(color: color.withAlpha((0.85 * 255).round()), fontSize: 14),
           ),
         ],
       ),

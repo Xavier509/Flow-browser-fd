@@ -4,7 +4,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/auth_modal.dart';
 import '../utils/constants.dart';
 
 class BrowserHeader extends StatefulWidget {
@@ -80,10 +79,10 @@ class _BrowserHeaderState extends State<BrowserHeader> {
         vertical: widget.isMobile ? 8 : 12,
       ),
       decoration: BoxDecoration(
-        color: AppConstants.surfaceColor.withOpacity(0.6),
+        color: AppConstants.surfaceColor.withAlpha((0.6 * 255).round()),
         border: Border(
           bottom: BorderSide(
-            color: AppConstants.primaryColor.withOpacity(0.3),
+            color: AppConstants.primaryColor.withAlpha((0.3 * 255).round()),
             width: 1,
           ),
         ),
@@ -160,7 +159,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
             gradient: AppConstants.primaryGradient,
             boxShadow: [
               BoxShadow(
-                color: AppConstants.primaryColor.withOpacity(0.5),
+                color: AppConstants.primaryColor.withAlpha((0.5 * 255).round()),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
@@ -193,7 +192,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
   Widget _buildBookmarksButton() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade800.withOpacity(0.5),
+        color: Colors.grey.shade800.withAlpha((0.5 * 255).round()),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Tooltip(
@@ -220,10 +219,10 @@ class _BrowserHeaderState extends State<BrowserHeader> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Color(workspace.color).withOpacity(0.2),
+          color: Color(workspace.color).withAlpha((0.2 * 255).round()),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: Color(workspace.color).withOpacity(0.3),
+            color: Color(workspace.color).withAlpha((0.3 * 255).round()),
           ),
         ),
         child: Row(
@@ -321,7 +320,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
   Widget _buildNavButton(IconData icon, VoidCallback onPressed, bool enabled) {
     return Container(
       decoration: BoxDecoration(
-        color: AppConstants.surfaceColor.withOpacity(0.35),
+        color: AppConstants.surfaceColor.withAlpha((0.35 * 255).round()),
         borderRadius: BorderRadius.circular(8),
       ),
       child: IconButton(
@@ -338,10 +337,10 @@ class _BrowserHeaderState extends State<BrowserHeader> {
   Widget _buildUrlBar(BrowserProvider browserProvider, SettingsProvider settingsProvider) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade800.withOpacity(0.5),
+        color: Colors.grey.shade800.withAlpha((0.5 * 255).round()),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: AppConstants.primaryColor.withOpacity(0.3),
+          color: AppConstants.primaryColor.withAlpha((0.3 * 255).round()),
         ),
       ),
       child: Row(
@@ -361,7 +360,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
               decoration: InputDecoration(
                 hintText: widget.isMobile ? 'URL...' : 'Enter URL or search...',
                 hintStyle: TextStyle(
-                  color: AppConstants.primaryColor.withOpacity(0.3),
+                  color: AppConstants.primaryColor.withAlpha((0.3 * 255).round()),
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -443,7 +442,7 @@ class _BrowserHeaderState extends State<BrowserHeader> {
           ),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: const Color(0xFFa855f7).withOpacity(0.3),
+            color: const Color(0xFFa855f7).withAlpha((0.3 * 255).round()),
           ),
         ),
         child: IconButton(
@@ -470,11 +469,11 @@ class _BrowserHeaderState extends State<BrowserHeader> {
     return Container(
       decoration: BoxDecoration(
         color: isActive
-            ? Colors.green.withOpacity(0.2)
-            : Colors.grey.shade800.withOpacity(0.5),
+            ? Colors.green.withAlpha((0.2 * 255).round())
+            : Colors.grey.shade800.withAlpha((0.5 * 255).round()),
         borderRadius: BorderRadius.circular(8),
         border: isActive
-            ? Border.all(color: Colors.green.withOpacity(0.3))
+            ? Border.all(color: Colors.green.withAlpha((0.3 * 255).round()))
             : null,
       ),
       child: Tooltip(

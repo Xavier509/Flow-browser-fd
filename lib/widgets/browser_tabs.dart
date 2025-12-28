@@ -349,8 +349,8 @@ class _BrowserTabsState extends State<BrowserTabs> {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: isHoveringDrop
-                              ? Color(group.color).withOpacity(0.4)
-                              : Color(group.color).withOpacity(0.2),
+                              ? Color(group.color).withAlpha((0.4 * 255).round())
+                              : Color(group.color).withAlpha((0.2 * 255).round()),
                           border: Border.all(
                             color: isHoveringDrop ? Color(group.color) : Color(group.color),
                             width: isHoveringDrop ? 2 : 1,
@@ -461,7 +461,7 @@ class _BrowserTabsState extends State<BrowserTabs> {
                             borderRadius: BorderRadius.circular(8),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
+                                color: Colors.black.withAlpha((0.3 * 255).round()),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -496,7 +496,7 @@ class _BrowserTabsState extends State<BrowserTabs> {
                         width: 150,
                         margin: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.grey[400]?.withOpacity(0.5),
+                          color: Colors.grey[400]?.withAlpha((0.5 * 255).round()),
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
@@ -570,7 +570,7 @@ class _BrowserTabsState extends State<BrowserTabs> {
                         final isHovering = candidateData.isNotEmpty;
                         return Container(
                           decoration: BoxDecoration(
-                            color: isHovering ? Colors.blue.withOpacity(0.3) : Colors.transparent,
+                            color: isHovering ? Colors.blue.withAlpha((0.3 * 255).round()) : Colors.transparent,
                             border: Border(
                               left: BorderSide(
                                 color: isHovering ? Colors.blue : Colors.grey,

@@ -38,7 +38,7 @@ class _SettingsModalState extends State<SettingsModal> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withAlpha((0.3 * 255).round()),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -238,14 +238,14 @@ class _SettingsModalState extends State<SettingsModal> {
         subtitle: Text(
           subtitle,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withAlpha((0.7 * 255).round()),
             fontSize: 12,
           ),
         ),
         value: value,
         onChanged: onChanged,
         activeColor: AppConstants.primaryColor,
-        activeTrackColor: AppConstants.primaryColor.withOpacity(0.3),
+        activeTrackColor: AppConstants.primaryColor.withAlpha((0.3 * 255).round()),
       ),
     );
   }
@@ -291,7 +291,7 @@ class _SettingsModalState extends State<SettingsModal> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.grey.shade700.withOpacity(0.5),
+              color: Colors.grey.shade700.withAlpha((0.5 * 255).round()),
               borderRadius: BorderRadius.circular(8),
             ),
             child: DropdownButton<String>(

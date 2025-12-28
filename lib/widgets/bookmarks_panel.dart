@@ -21,10 +21,10 @@ class BookmarksPanel extends StatelessWidget {
 
     Widget content = Container(
       decoration: BoxDecoration(
-        color: AppConstants.surfaceColor.withOpacity(0.95),
+        color: AppConstants.surfaceColor.withAlpha((0.95 * 255).round()),
         border: Border(
           left: BorderSide(
-            color: AppConstants.primaryColor.withOpacity(0.3),
+            color: AppConstants.primaryColor.withAlpha((0.3 * 255).round()),
             width: 1,
           ),
         ),
@@ -107,7 +107,7 @@ class BookmarksPanel extends StatelessWidget {
                     child: Text(
                       'No bookmarks yet',
                       style: TextStyle(
-                        color: AppConstants.primaryColor.withOpacity(0.5),
+                        color: AppConstants.primaryColor.withAlpha((0.5 * 255).round()),
                       ),
                     ),
                   )
@@ -133,7 +133,7 @@ class BookmarksPanel extends StatelessWidget {
                         subtitle: Text(
                           bookmark.url,
                           style: TextStyle(
-                            color: AppConstants.primaryColor.withOpacity(0.5),
+                            color: AppConstants.primaryColor.withAlpha((0.5 * 255).round()),
                             fontSize: 12,
                           ),
                           maxLines: 1,

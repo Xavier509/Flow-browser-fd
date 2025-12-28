@@ -62,7 +62,7 @@ class _SourceViewerDialogState extends State<SourceViewerDialog> {
                       Text(
                         widget.url,
                         style: TextStyle(
-                          color: AppConstants.primaryColor.withOpacity(0.7),
+                          color: AppConstants.primaryColor.withAlpha((0.7 * 255).round()),
                           fontSize: 12,
                         ),
                       ),

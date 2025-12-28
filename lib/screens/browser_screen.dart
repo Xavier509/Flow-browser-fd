@@ -66,19 +66,40 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 onWorkspaceTap: () => setState(() => _showWorkspaces = true),
                 onSettingsTap: () => setState(() => _showSettings = true),
                 onAuthTap: () => setState(() => _showAuth = true),
-                onHistoryTap: () => setState(() => _showHistory = !_showHistory),
-                onNotesTap: () => setState(() => _showNotes = !_showNotes),
-                onTodosTap: () => setState(() => _showTodos = !_showTodos),
+                onHistoryTap: () => setState(() {
+                  final open = !_showHistory;
+                  _showHistory = open;
+                  if (open) {
+                    _showNotes = false;
+                    _showTodos = false;
+                    _showBookmarks = false;
+                    _showAIPanel = false;
+                  }
+                }),
+                onNotesTap: () => setState(() {
+                  final open = !_showNotes;
+                  _showNotes = open;
+                  if (open) {
+                    _showHistory = false;
+                    _showTodos = false;
+                    _showBookmarks = false;
+                    _showAIPanel = false;
+                  }
+                }),
+                onTodosTap: () => setState(() {
+                  final open = !_showTodos;
+                  _showTodos = open;
+                  if (open) {
+                    _showHistory = false;
+                    _showNotes = false;
+                    _showBookmarks = false;
+                    _showAIPanel = false;
+                  }
+                }),
                 isMobile: isMobile,
                 webViewController: _webViewController,
               ),
-              // History/Notes/Todos panels (desktop/tablet toggles)
-              if (_showHistory && !isMobile)
-                SizedBox(width: 360, child: HistoryPanel()),
-              if (_showNotes && !isMobile)
-                SizedBox(width: 360, child: NotesPanel()),
-              if (_showTodos && !isMobile)
-                SizedBox(width: 360, child: TodosPanel()),
+
               // Email verification banner
               Consumer<AuthProvider>(
                 builder: (context, auth, _) {
@@ -98,10 +119,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
                           ),
                           TextButton(
                             onPressed: () async {
+                              final messenger = ScaffoldMessenger.of(context);
                               await auth.resendVerificationEmail();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Verification email sent')),
-                              );
+                              if (!mounted) return;
+                              messenger.showSnackBar(const SnackBar(content: Text('Verification email sent')));
                             },
                             child: const Text('Resend', style: TextStyle(color: Colors.white)),
                           ),
@@ -121,10 +142,31 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   children: [
                     // Main browser view
                     Expanded(
-                      child: BrowserWebView(
-                        onWebViewCreated: (controller) {
-                          _webViewController = controller;
-                        },
+                      child: Stack(
+                        children: [
+                          BrowserWebView(
+                            onWebViewCreated: (controller) {
+                              _webViewController = controller;
+                            },
+                          ),
+                          if (!isMobile && (_showHistory || _showNotes || _showTodos || _showAIPanel || _showBookmarks))
+                            Positioned.fill(
+                              child: AnimatedOpacity(
+                                opacity: 0.24,
+                                duration: const Duration(milliseconds: 220),
+                                child: GestureDetector(
+                                  onTap: () => setState(() {
+                                    _showHistory = false;
+                                    _showNotes = false;
+                                    _showTodos = false;
+                                    _showBookmarks = false;
+                                    _showAIPanel = false;
+                                  }),
+                                  child: Container(color: Colors.black26),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     
@@ -146,6 +188,52 @@ class _BrowserScreenState extends State<BrowserScreen> {
                           onClose: () => setState(() => _showBookmarks = false),
                         ),
                       ),
+
+                    // History / Notes / Todos side panels (desktop/tablet)
+                    if (!isMobile) ...[
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _showHistory
+                            ? SizedBox(
+                                width: 360,
+                                child: Material(
+                                  elevation: 6,
+                                  child: HistoryPanel(onClose: () => setState(() => _showHistory = false)),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _showNotes
+                            ? SizedBox(
+                                width: 360,
+                                child: Material(
+                                  elevation: 6,
+                                  child: NotesPanel(onClose: () => setState(() => _showNotes = false)),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _showTodos
+                            ? SizedBox(
+                                width: 360,
+                                child: Material(
+                                  elevation: 6,
+                                  child: TodosPanel(onClose: () => setState(() => _showTodos = false)),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -169,6 +257,19 @@ class _BrowserScreenState extends State<BrowserScreen> {
         onClose: () => setState(() => _showAIPanel = false),
         isMobile: true,
       );
+    }
+
+    // Mobile bottom sheets for History / Notes / Todos
+    if (isMobile && _showHistory) {
+      return HistoryPanel(onClose: () => setState(() => _showHistory = false));
+    }
+
+    if (isMobile && _showNotes) {
+      return NotesPanel(onClose: () => setState(() => _showNotes = false));
+    }
+
+    if (isMobile && _showTodos) {
+      return TodosPanel(onClose: () => setState(() => _showTodos = false));
     }
     
     if (isMobile && _showBookmarks) {
