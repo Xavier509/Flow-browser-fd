@@ -28,6 +28,9 @@ class BrowserHeader extends StatefulWidget {
     required this.onWorkspaceTap,
     required this.onSettingsTap,
     required this.onAuthTap,
+    this.onHistoryTap,
+    this.onNotesTap,
+    this.onTodosTap,
     required this.isMobile,
     this.webViewController,
   });
