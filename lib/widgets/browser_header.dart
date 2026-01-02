@@ -456,6 +456,33 @@ class _BrowserHeaderState extends State<BrowserHeader> {
       ),
       const SizedBox(width: 8),
       _buildActionButton(
+        Icons.translate,
+        () {
+          final settings = context.read<SettingsProvider>();
+          context.read<BrowserProvider>().translateCurrentTab(settings.translationLanguage);
+        },
+        false,
+      ),
+      const SizedBox(width: 8),
+      // If the current tab is a translated page, provide a quick "View Original" action
+      if (provider.currentTab.url != null && provider.currentTab.url!.contains('translate.google.com')) ...[
+        _buildActionButton(
+          Icons.language,
+          () {
+            try {
+              final uri = Uri.parse(provider.currentTab.url!);
+              final encoded = uri.queryParameters['u'] ?? '';
+              if (encoded.isNotEmpty) {
+                final original = Uri.decodeComponent(encoded);
+                provider.navigateToUrl(original);
+              }
+            } catch (_) {}
+          },
+          false,
+        ),
+        const SizedBox(width: 8),
+      ],
+      _buildActionButton(
         Icons.shield,
         () {
           context.read<SettingsProvider>().toggleProxy();

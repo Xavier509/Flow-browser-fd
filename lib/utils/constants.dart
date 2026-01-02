@@ -39,10 +39,21 @@ class AppConstants {
     'DuckDuckGo': 'https://duckduckgo.com/?q=',
     'Bing': 'https://www.bing.com/search?q=',
     'Brave': 'https://search.brave.com/search?q=',
+    'Yahoo': 'https://search.yahoo.com/search?p=',
   };
   
   // Default Search Engine
   static const String defaultSearchEngine = 'Google';
+
+  // Translation languages (used by full-page translation feature)
+  static const Map<String, String> translationLanguages = {
+    'English': 'en',
+    'Spanish': 'es',
+    'French': 'fr',
+    'German': 'de',
+    'Chinese (Simplified)': 'zh-CN',
+  };
+  static const String defaultTranslationLanguage = 'en';
   
   // Tracker Blocklist
   static const List<String> trackerBlocklist = [
@@ -52,11 +63,19 @@ class AppConstants {
     'facebook.com/tr',
     'connect.facebook.net',
     'twitter.com/i/adsct',
+    'adservice.',
+    'googleadservices',
+    'adsystem',
     'ads.',
     'ad.',
+    'advert',
+    'advertising',
+    'advertisement',
     'analytics.',
     'tracking.',
     'tracker.',
+    'adcdn',
+    'adsafeprotected',
   ];
 }
 

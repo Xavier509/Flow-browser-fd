@@ -45,12 +45,30 @@ class _BrowserWebViewState extends State<BrowserWebView> {
               onProgress: (int progress) {
                 setState(() => _progress = progress / 100);
               },
-              onPageFinished: (String url) {
+              onPageFinished: (String url) async {
                 setState(() => _progress = 1.0);
                 final provider = context.read<BrowserProvider>();
                 provider.currentTab.isLoading = false;
                 // Cache the URL
                 _tabCache[provider.currentTab.id] = url;
+
+                // Inject ad-blocking JS if enabled (best-effort) and optionally trigger translation
+                try {
+                  final settings = context.read<SettingsProvider>();
+                  if (settings.adBlockerEnabled) {
+                    final js = "(function(){try{var els=document.querySelectorAll('[id*=\\\"ad\\\"],[class*=\\\"ad\\\"],[class*=\\\"ads\\\"],iframe'); for(var i=0;i<els.length;i++){els[i].remove();} var css=document.createElement('style'); css.innerHTML='iframe, .ads, .advertisement, [class*=\\\"ad-\\\"]{display:none!important}'; document.head.appendChild(css);}catch(e){}})();";
+                    await _controller?.runJavaScript(js);
+                  }
+
+                  // Full-page translation: open Google Translate view (avoid looping on translate.google.com)
+                  if (settings.fullPageTranslation) {
+                    final cur = provider.currentTab.url ?? '';
+                    if (cur.isNotEmpty && !cur.contains('translate.google.com')) {
+                      // Navigate to translated page
+                      provider.translateCurrentTab(settings.translationLanguage);
+                    }
+                  }
+                } catch (_) {}
               },
               onWebResourceError: (WebResourceError error) {
                 setState(() {
@@ -58,7 +76,21 @@ class _BrowserWebViewState extends State<BrowserWebView> {
                 });
                 debugPrint('WebView error: ${error.description}');
               },
-              onNavigationRequest: (request) => NavigationDecision.navigate,
+              onNavigationRequest: (request) {
+                try {
+                  final settings = context.read<SettingsProvider>();
+                  if (settings.adBlockerEnabled) {
+                    final uri = Uri.tryParse(request.url);
+                    final host = (uri?.host ?? '').toLowerCase();
+                    final blocked = AppConstants.trackerBlocklist.any((blk) => host.contains(blk) || request.url.contains(blk));
+                    if (blocked) {
+                      debugPrint('Blocked request to ${request.url} due to adblock rules');
+                      return NavigationDecision.prevent;
+                    }
+                  }
+                } catch (_) {}
+                return NavigationDecision.navigate;
+              },
             ),
           );
         // notify parent that controller is ready
@@ -289,15 +321,28 @@ class _BrowserWebViewState extends State<BrowserWebView> {
               const SizedBox(height: 32),
               // Recommended searches on the start page
               Builder(builder: (ctx) {
-                final recs = context.read<BrowserProvider>().getRecommendations(limit: 6);
+                final settings = context.read<SettingsProvider>();
+                final recs = settings.personalizedSearch ? context.read<BrowserProvider>().getRecommendations(limit: 6) : context.read<BrowserProvider>().getGenericRecommendations(limit: 6);
                 return Column(
                   children: [
                     if (recs.isNotEmpty) ...[
-                      const Align(
+                      Align(
                         alignment: Alignment.centerLeft,
                         child: Padding(
-                          padding: EdgeInsets.only(left: 8.0, bottom: 8.0),
-                          child: Text('Recommended for you', style: TextStyle(fontWeight: FontWeight.bold)),
+                          padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+                          child: Row(
+                            children: [
+                              const Text('Recommended for you', style: TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 8),
+                              Builder(builder: (c) {
+                                final s = c.read<SettingsProvider>();
+                                return ActionChip(
+                                  label: Text(s.personalizedSearch ? 'Personalized: On' : 'Personalized: Off'),
+                                  onPressed: () => c.read<SettingsProvider>().togglePersonalizedSearch(),
+                                );
+                              }),
+                            ],
+                          ),
                         ),
                       ),
                       Wrap(
@@ -306,6 +351,40 @@ class _BrowserWebViewState extends State<BrowserWebView> {
                       ),
                       const SizedBox(height: 16),
                     ],
+
+                    // Bookmarks on home page if enabled (moved out of the recommendations block)
+                    if (settings.showBookmarksOnHome && provider.bookmarks.isNotEmpty) ...[
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(left: 8.0, bottom: 8.0),
+                          child: Text('Bookmarks', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: provider.pinnedBookmarks.take(8).map((b) => ActionChip(label: Text(b.title ?? b.url), onPressed: () => context.read<BrowserProvider>().navigateToUrl(b.url))).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => showDialog(
+                            context: context,
+                            builder: (c) => AlertDialog(
+                              title: const Text('Edit Home Page'),
+                              content: const Text('Open the Bookmarks panel to manage which bookmarks you want pinned on the home page.'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+                              ],
+                            ),
+                          ),
+                          child: const Text('Edit Home Page'),
+                        ),
+                      ),
+                    ],
+
                     Wrap(
                       spacing: 16,
                       runSpacing: 16,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/constants.dart';
+import '../screens/performance_page.dart';
 
 class SettingsModal extends StatefulWidget {
   final VoidCallback onClose;
@@ -109,6 +110,13 @@ class _SettingsModalState extends State<SettingsModal> {
                     (value) => settingsProvider.toggleAutoDeleteCookies(),
                   ),
 
+                  _buildSwitchTile(
+                    'Advanced Ad Blocker',
+                    'Aggressively block ads and intrusive trackers (may break some sites). Toggle to enable/disable.',
+                    settingsProvider.adBlockerEnabled,
+                    (value) => settingsProvider.toggleAdBlocker(),
+                  ),
+
                   const SizedBox(height: 24),
 
                   // VPN & Proxy
@@ -159,6 +167,43 @@ class _SettingsModalState extends State<SettingsModal> {
                     (value) => settingsProvider.setSearchEngine(value!),
                   ),
 
+                  _buildSwitchTile(
+                    'Personalized Search Recommendations',
+                    'Use your local history to surface recommended searches (can be toggled for privacy)',
+                    settingsProvider.personalizedSearch,
+                    (value) => settingsProvider.togglePersonalizedSearch(),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  _buildSectionHeader('Full-Page Translation'),
+                  _buildSwitchTile(
+                    'Enable Full-Page Translation',
+                    'Translate entire pages using Google Translate (opens translated page)',
+                    settingsProvider.fullPageTranslation,
+                    (value) => settingsProvider.toggleFullPageTranslation(),
+                  ),
+                  if (settingsProvider.fullPageTranslation) ...[
+                    const SizedBox(height: 8),
+                    _buildDropdownTile(
+                      'Translation Language',
+                      'Target language for translations',
+                      settingsProvider.translationLanguage,
+                      AppConstants.translationLanguages.values.toList(),
+                      AppConstants.translationLanguages.keys.toList(),
+                      (value) => settingsProvider.setTranslationLanguage(value!),
+                    ),
+                  ],
+
+                  const SizedBox(height: 12),
+
+                  _buildSwitchTile(
+                    'Show Bookmarks on Home Page',
+                    'Show your chosen bookmarks on the home/start page for quick access',
+                    settingsProvider.showBookmarksOnHome,
+                    (value) => settingsProvider.toggleShowBookmarksOnHome(),
+                  ),
+
                   const SizedBox(height: 24),
 
                   // Appearance
@@ -168,6 +213,32 @@ class _SettingsModalState extends State<SettingsModal> {
                     'Use dark theme for better visibility',
                     settingsProvider.isDarkMode,
                     (value) => settingsProvider.toggleDarkMode(),
+                  ),
+
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Performance'),
+                  _buildSwitchTile(
+                    'Enable Performance Monitoring',
+                    'Collect and display app/system performance metrics (may use extra resources)',
+                    settingsProvider.performanceMonitoring,
+                    (value) => settingsProvider.togglePerformanceMonitoring(),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        // Open performance page
+                        Navigator.of(context).push(MaterialPageRoute(builder: (c) => PerformancePage()));
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: AppConstants.primaryColor),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Open Performance Page'),
+                    ),
                   ),
 
                   const SizedBox(height: 32),

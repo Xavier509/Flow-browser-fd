@@ -5,6 +5,7 @@ class Bookmark {
   String? favicon;
   String workspace;
   DateTime createdAt;
+  bool pinned;
 
   Bookmark({
     required this.id,
@@ -13,6 +14,7 @@ class Bookmark {
     this.favicon,
     required this.workspace,
     DateTime? createdAt,
+    this.pinned = false,
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toJson() {
@@ -23,6 +25,7 @@ class Bookmark {
       'favicon': favicon,
       'workspace': workspace,
       'createdAt': createdAt.toIso8601String(),
+      'pinned': pinned,
     };
   }
 
@@ -34,6 +37,7 @@ class Bookmark {
       favicon: json['favicon'],
       workspace: json['workspace'],
       createdAt: DateTime.parse(json['createdAt']),
+      pinned: json['pinned'] == true || json['pinned'] == 't' || json['pinned'] == 1,
     );
   }
 }

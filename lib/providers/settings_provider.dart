@@ -15,6 +15,14 @@ class SettingsProvider with ChangeNotifier {
   String _securityLevel = 'maximum';
   String _searchEngine = 'Google';
   bool _isDarkMode = false;
+
+  // New features
+  bool _personalizedSearch = true; // personalized recommendations
+  bool _fullPageTranslation = true;
+  String _translationLanguage = 'en';
+  bool _adBlockerEnabled = true;
+  bool _performanceMonitoring = false;
+  bool _showBookmarksOnHome = true;
   
   SettingsProvider() {
     _loadSettings();
@@ -30,6 +38,14 @@ class SettingsProvider with ChangeNotifier {
   String get securityLevel => _securityLevel;
   String get searchEngine => _searchEngine;
   bool get isDarkMode => _isDarkMode;
+
+  // New getters
+  bool get personalizedSearch => _personalizedSearch;
+  bool get fullPageTranslation => _fullPageTranslation;
+  String get translationLanguage => _translationLanguage;
+  bool get adBlockerEnabled => _adBlockerEnabled;
+  bool get performanceMonitoring => _performanceMonitoring;
+  bool get showBookmarksOnHome => _showBookmarksOnHome;
   
   void _loadSettings() {
     _proxyEnabled = _settingsBox.get('proxyEnabled', defaultValue: false);
@@ -41,6 +57,15 @@ class SettingsProvider with ChangeNotifier {
     _securityLevel = _settingsBox.get('securityLevel', defaultValue: 'maximum');
     _searchEngine = _settingsBox.get('searchEngine', defaultValue: 'Google');
     _isDarkMode = _settingsBox.get('isDarkMode', defaultValue: false);
+
+    // Load new settings
+    _personalizedSearch = _settingsBox.get('personalizedSearch', defaultValue: true);
+    _fullPageTranslation = _settingsBox.get('fullPageTranslation', defaultValue: true);
+    _translationLanguage = _settingsBox.get('translationLanguage', defaultValue: 'en');
+    _adBlockerEnabled = _settingsBox.get('adBlockerEnabled', defaultValue: true);
+    _performanceMonitoring = _settingsBox.get('performanceMonitoring', defaultValue: false);
+    _showBookmarksOnHome = _settingsBox.get('showBookmarksOnHome', defaultValue: true);
+
     notifyListeners();
   }
   
@@ -105,6 +130,43 @@ class SettingsProvider with ChangeNotifier {
   void toggleDarkMode() {
     _isDarkMode = !_isDarkMode;
     _settingsBox.put('isDarkMode', _isDarkMode);
+    notifyListeners();
+  }
+
+  // New setters/toggles
+  void togglePersonalizedSearch() {
+    _personalizedSearch = !_personalizedSearch;
+    _settingsBox.put('personalizedSearch', _personalizedSearch);
+    notifyListeners();
+  }
+
+  void toggleFullPageTranslation() {
+    _fullPageTranslation = !_fullPageTranslation;
+    _settingsBox.put('fullPageTranslation', _fullPageTranslation);
+    notifyListeners();
+  }
+
+  void setTranslationLanguage(String lang) {
+    _translationLanguage = lang;
+    _settingsBox.put('translationLanguage', lang);
+    notifyListeners();
+  }
+
+  void toggleAdBlocker() {
+    _adBlockerEnabled = !_adBlockerEnabled;
+    _settingsBox.put('adBlockerEnabled', _adBlockerEnabled);
+    notifyListeners();
+  }
+
+  void togglePerformanceMonitoring() {
+    _performanceMonitoring = !_performanceMonitoring;
+    _settingsBox.put('performanceMonitoring', _performanceMonitoring);
+    notifyListeners();
+  }
+
+  void toggleShowBookmarksOnHome() {
+    _showBookmarksOnHome = !_showBookmarksOnHome;
+    _settingsBox.put('showBookmarksOnHome', _showBookmarksOnHome);
     notifyListeners();
   }
 }

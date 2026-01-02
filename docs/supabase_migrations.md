@@ -2,6 +2,8 @@
 
 Run the SQL migration in `supabase_migrations/001_create_history_notes_todos.sql` on your Supabase project SQL editor to enable server-side storage for per-account history, notes and todos.
 
+If you want bookmarks, tabs and sessions to sync across devices, also run `supabase_migrations/002_create_bookmarks_tabs_sessions.sql` which creates `bookmarks`, `tabs`, and `sessions` tables used by the app.
+
 Example steps:
 
 1. Open your Supabase project.

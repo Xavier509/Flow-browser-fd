@@ -50,41 +50,18 @@ class BookmarksPanel extends StatelessWidget {
                       icon: const Icon(Icons.add, color: AppConstants.primaryColor),
                       tooltip: 'Add current page',
                       onPressed: () {
-                        if (!authProvider.isAuthenticated) {
-                          // Show auth modal
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Sign In Required'),
-                              content: const Text('You need to be signed in to save bookmarks. Would you like to sign in or create an account?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    // Open auth modal - this would need to be passed as a callback
-                                    // For now, show a snackbar
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Please sign in from the top right menu')),
-                                    );
-                                  },
-                                  child: const Text('Sign In'),
-                                ),
-                              ],
-                            ),
-                          );
-                          return;
-                        }
-                        
                         final currentUrl = provider.currentTab.url;
                         if (!provider.isBookmarked(currentUrl)) {
                           provider.addBookmark();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Bookmark added')),
-                          );
+                          if (!authProvider.isAuthenticated) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Bookmark saved locally. Sign in to sync across devices.')),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Bookmark added and synced')),
+                            );
+                          }
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Already bookmarked')),
@@ -139,10 +116,27 @@ class BookmarksPanel extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          color: Colors.red,
-                          onPressed: () => provider.removeBookmark(bookmark.id),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(bookmark.pinned ? Icons.push_pin : Icons.push_pin_outlined, size: 18),
+                              color: bookmark.pinned ? AppConstants.primaryColor : Colors.white70,
+                              onPressed: () {
+                                provider.toggleBookmarkPinned(bookmark.id);
+                                if (!authProvider.isAuthenticated) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pinned locally. Sign in to sync across devices.')));
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Updated bookmark')));
+                                }
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              color: Colors.red,
+                              onPressed: () => provider.removeBookmark(bookmark.id),
+                            ),
+                          ],
                         ),
                         onTap: () {
                           provider.navigateToUrl(bookmark.url);

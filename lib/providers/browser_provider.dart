@@ -32,6 +32,16 @@ class BrowserProvider with ChangeNotifier {
   int get activeWorkspaceIndex => _activeWorkspaceIndex;
   int get activeTabIndex => _activeTabIndex;
   List<Bookmark> get bookmarks => _bookmarks;
+  List<Bookmark> get pinnedBookmarks => _bookmarks.where((b) => b.pinned).toList();
+
+  void toggleBookmarkPinned(String id) {
+    final idx = _bookmarks.indexWhere((b) => b.id == id);
+    if (idx == -1) return;
+    _bookmarks[idx].pinned = !_bookmarks[idx].pinned;
+    _saveBookmarks();
+    Future(() => _upsertBookmarkToSupabase(_bookmarks[idx]));
+    notifyListeners();
+  }
   String get urlInput => _urlInput;
   
   int get currentTabIndex => _activeTabIndex;
@@ -117,10 +127,18 @@ class BrowserProvider with ChangeNotifier {
             createdAt: map['created_at'] != null
                 ? DateTime.parse(map['created_at'])
                 : DateTime.now(),
+            pinned: map['pinned'] == true || map['pinned'] == 't' || map['pinned'] == 1,
           );
 
-          if (!_bookmarks.any((b) => b.id == remote.id || b.url == remote.url)) {
+          final existsIdx = _bookmarks.indexWhere((b) => b.id == remote.id || b.url == remote.url);
+          if (existsIdx == -1) {
             _bookmarks.add(remote);
+          } else {
+            // Update existing record
+            _bookmarks[existsIdx].title = remote.title;
+            _bookmarks[existsIdx].favicon = remote.favicon;
+            _bookmarks[existsIdx].pinned = remote.pinned;
+            _bookmarks[existsIdx].workspace = remote.workspace;
           }
         } catch (_) {}
       }
@@ -142,6 +160,7 @@ class BrowserProvider with ChangeNotifier {
         'title': b.title,
         'favicon': b.favicon,
         'workspace': b.workspace,
+        'pinned': b.pinned,
         'created_at': b.createdAt.toIso8601String(),
       };
 
@@ -390,6 +409,37 @@ class BrowserProvider with ChangeNotifier {
     } catch (_) {
       return [];
     }
+  }
+
+  /// Generic (non-personalized) recommendations. Useful when user disables personalization.
+  List<String> getGenericRecommendations({int limit = 5}) {
+    try {
+      final Box historyBox = Hive.box('history');
+      final items = historyBox.values.where((v) => v is Map).map((v) => Map<String, dynamic>.from(v as Map)).toList();
+      final Map<String, int> counts = {};
+      for (final e in items) {
+        final q = _extractDomain(e['url'] ?? '') ;
+        if (q == null || q.isEmpty) continue;
+        counts[q] = (counts[q] ?? 0) + 1;
+      }
+      final sorted = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+      final result = sorted.take(limit).map((e) => e.key).toList();
+      if (result.isEmpty) return ['news', 'weather', 'videos', 'shopping', 'maps'].take(limit).toList();
+      return result;
+    } catch (_) {
+      return ['news', 'weather', 'videos', 'shopping', 'maps'].take(limit).toList();
+    }
+  }
+
+  /// Translate current tab by opening Google Translate with the current page URL
+  void translateCurrentTab(String targetLang) {
+    try {
+      final cur = currentTab.url;
+      if (cur == null || cur.isEmpty) return;
+      final encoded = Uri.encodeComponent(cur);
+      final translateUrl = 'https://translate.google.com/translate?sl=auto&tl=$targetLang&u=$encoded';
+      navigateToUrl(translateUrl);
+    } catch (_) {}
   }
 
   String _extractDomain(String url) {
@@ -661,10 +711,6 @@ class BrowserProvider with ChangeNotifier {
   void addBookmark() {
     if (currentTab.url == 'about:blank') return;
 
-    // Check if user is authenticated
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return; // Should be checked in UI, but double-check here
-
     // Prevent duplicates
     if (isBookmarked(currentTab.url)) return;
 
@@ -678,8 +724,10 @@ class BrowserProvider with ChangeNotifier {
     _bookmarks.add(bookmark);
     _saveBookmarks();
     notifyListeners();
-    // Fire-and-forget sync to Supabase
-    Future(() => _upsertBookmarkToSupabase(bookmark));
+
+    // If user is signed in, sync to Supabase; otherwise keep local and prompt in UI
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) Future(() => _upsertBookmarkToSupabase(bookmark));
   }
   
   void removeBookmark(String id) {

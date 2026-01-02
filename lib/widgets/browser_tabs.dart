@@ -251,7 +251,7 @@ class _BrowserTabsState extends State<BrowserTabs> {
     provider.switchWorkspace(provider.workspaces.length - 1);
     provider.tabs.clear();
     provider.tabs.add(tab);
-    provider.notifyListeners();
+    provider.reorderTabs(provider.tabs);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Tab moved to new window')),
     );
